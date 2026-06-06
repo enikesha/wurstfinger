@@ -281,23 +281,28 @@ extension KeyboardViewModel {
         switch phase {
         case .began:
             isDeleteDragging = true
-            deleteDragResidual = 0
+            deleteDragTranslationX = 0
+            deleteBackwardStepsDispatched = 0
+            deleteForwardStepsDispatched = 0
         case let .changed(deltaX):
             guard isDeleteDragging, deltaX != 0 else { return }
-            deleteDragResidual += deltaX
-            while deleteDragResidual <= -KeyboardConstants.SpaceGestures.dragStep {
+            deleteDragTranslationX += deltaX
+            let step = KeyboardConstants.SpaceGestures.dragStep
+            while deleteDragTranslationX <= -step * CGFloat(deleteBackwardStepsDispatched + 1) {
                 dispatchAction(.deleteBackward)
                 feedbackDrag()
-                deleteDragResidual += KeyboardConstants.SpaceGestures.dragStep
+                deleteBackwardStepsDispatched += 1
             }
-            while deleteDragResidual >= KeyboardConstants.SpaceGestures.dragStep {
+            while deleteDragTranslationX >= step * CGFloat(deleteForwardStepsDispatched + 1) {
                 dispatchAction(.deleteForward)
                 feedbackDrag()
-                deleteDragResidual -= KeyboardConstants.SpaceGestures.dragStep
+                deleteForwardStepsDispatched += 1
             }
         case .ended:
             isDeleteDragging = false
-            deleteDragResidual = 0
+            deleteDragTranslationX = 0
+            deleteBackwardStepsDispatched = 0
+            deleteForwardStepsDispatched = 0
         case .tap:
             handleGesture(.tap, keyId: key.id, isReturn: false)
         }

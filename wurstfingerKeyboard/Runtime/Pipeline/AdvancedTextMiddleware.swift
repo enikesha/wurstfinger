@@ -9,8 +9,8 @@
 import UIKit
 
 /// Handles advanced text-input actions that `TextInputMiddleware` leaves
-/// as pass-through: delete-forward, capitalize-word, word-boundary cursor
-/// movement, and clipboard (copy/paste/cut).
+/// as pass-through: word delete, delete-forward, capitalize-word,
+/// word-boundary cursor movement, and clipboard (copy/paste/cut).
 ///
 /// These actions need multi-step proxy interaction (e.g. read context,
 /// delete, re-insert) and are therefore separated from the basic middleware
@@ -33,6 +33,8 @@ struct AdvancedTextMiddleware: ActionMiddleware {
 
     private func apply(action: KeyAction, to target: TextInputTarget) {
         switch action {
+        case .deleteWordBackward:
+            deleteWordBackward(target: target)
         case .deleteForward:
             deleteForward(target: target)
         case let .capitalizeWord(uppercased):
@@ -48,7 +50,17 @@ struct AdvancedTextMiddleware: ActionMiddleware {
         }
     }
 
-    // MARK: - Delete Forward
+    // MARK: - Deletion
+
+    private func deleteWordBackward(target: TextInputTarget) {
+        guard let context = target.documentContextBeforeInput, !context.isEmpty else { return }
+        let deleteCount = Self.previousWordDeleteCount(in: context)
+        guard deleteCount > 0 else { return }
+
+        for _ in 0 ..< deleteCount {
+            target.deleteBackward()
+        }
+    }
 
     private func deleteForward(target: TextInputTarget) {
         guard let after = target.documentContextAfterInput, !after.isEmpty else { return }
@@ -103,5 +115,36 @@ struct AdvancedTextMiddleware: ActionMiddleware {
             UIPasteboard.general.string = selected
             target.deleteBackward()
         }
+    }
+
+    static func previousWordDeleteCount(in context: String) -> Int {
+        let characters = Array(context)
+        var index = characters.count
+
+        while index > 0, characters[index - 1].isWhitespace {
+            index -= 1
+        }
+
+        if index == 0 {
+            return characters.count
+        }
+
+        if isWordCharacter(characters[index - 1]) {
+            while index > 0, isWordCharacter(characters[index - 1]) {
+                index -= 1
+            }
+        } else {
+            while index > 0,
+                  !characters[index - 1].isWhitespace,
+                  !isWordCharacter(characters[index - 1]) {
+                index -= 1
+            }
+        }
+
+        return characters.count - index
+    }
+
+    private static func isWordCharacter(_ character: Character) -> Bool {
+        character.isLetter || character.isNumber || character == "_"
     }
 }

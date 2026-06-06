@@ -39,11 +39,29 @@ enum CommonKeys {
         )
     }()
 
-    static let delete = KeyConfig.utility(
-        UtilitySlot.delete, label: "⌫", action: .deleteBackward,
-        swipeMode: .twoWayHorizontal, slideType: .delete,
-        accessibilityLabel: "Löschen"
-    )
+    static let delete: KeyConfig = {
+        var bindings: [GestureType: KeyBinding] = [:]
+        bindings[.tap] = KeyBinding(
+            label: "⌫", action: .deleteBackward,
+            category: .utility, returnAction: nil,
+            accessibilityLabel: "Löschen"
+        )
+        bindings[.swipeLeft] = KeyBinding(
+            label: "", action: .deleteBackward,
+            category: .utility, returnAction: .deleteWordBackward,
+            accessibilityLabel: nil
+        )
+        bindings[.swipeRight] = KeyBinding(
+            label: "", action: .deleteForward,
+            category: .utility, returnAction: nil,
+            accessibilityLabel: nil
+        )
+        return KeyConfig(
+            id: UtilitySlot.delete, bindings: bindings,
+            swipeMode: .twoWayHorizontal, slideType: .delete,
+            style: .utility, tapCycleActions: nil
+        )
+    }()
 
     static let `return` = KeyConfig.utility(
         UtilitySlot.return, label: "↵", action: .newline,

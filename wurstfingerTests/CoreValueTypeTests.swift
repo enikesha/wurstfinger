@@ -45,7 +45,7 @@ struct KeyActionTests {
         let cases: [KeyAction] = [
             .cycleAccents, .capitalizeWord(uppercased: true), .capitalizeWord(uppercased: false),
             .advanceToNextInputMode, .dismissKeyboard,
-            .deleteBackward, .deleteForward,
+            .deleteBackward, .deleteWordBackward, .deleteForward,
             .space, .newline,
             .copy, .paste, .cut, .none,
         ]
@@ -110,6 +110,7 @@ struct KeyCategoryTests {
 
     @Test func utilityInference() {
         #expect(KeyAction.deleteBackward.inferredCategory == .utility)
+        #expect(KeyAction.deleteWordBackward.inferredCategory == .utility)
         #expect(KeyAction.deleteForward.inferredCategory == .utility)
         #expect(KeyAction.moveCursor(offset: 1).inferredCategory == .utility)
         #expect(KeyAction.advanceToNextInputMode.inferredCategory == .utility)

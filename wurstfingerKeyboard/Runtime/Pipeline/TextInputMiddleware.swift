@@ -49,7 +49,7 @@ struct TextInputMiddleware: ActionMiddleware {
         case let .moveCursor(offset):
             target.adjustTextPosition(byCharacterOffset: offset)
         case .compose, .cycleAccents, .switchMode, .capitalizeWord,
-             .advanceToNextInputMode, .dismissKeyboard, .deleteForward,
+             .advanceToNextInputMode, .dismissKeyboard, .deleteWordBackward, .deleteForward,
              .copy, .paste, .cut, .none, .switchToNextLanguage:
             break
         }

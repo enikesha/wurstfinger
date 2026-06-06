@@ -30,9 +30,14 @@ enum SlidePhase {
 struct SlideGestureHandler: ViewModifier {
     let slideType: SlideType
     let onSlide: (SlidePhase) -> Void
+    let onGestureRecognized: (GestureClassification) -> Void
     let onTouchDown: () -> Void
+    let aspectRatio: CGFloat
     @Binding var isActive: Bool
 
+    @State private var positions = RingBuffer<CGPoint>(
+        capacity: KeyboardConstants.Gesture.positionBufferSize
+    )
     @State private var dragStarted = false
     @State private var isSliding = false
     @State private var lastTranslationX: CGFloat = 0
@@ -48,6 +53,14 @@ struct SlideGestureHandler: ViewModifier {
                         }
 
                         let currentX = value.translation.width
+                        let point = CGPoint(
+                            x: currentX,
+                            y: value.translation.height
+                        )
+                        if positions.isEmpty {
+                            positions.append(.zero)
+                        }
+                        positions.append(point)
 
                         if !isSliding {
                             let threshold = activationThreshold
@@ -68,10 +81,23 @@ struct SlideGestureHandler: ViewModifier {
 
                         isActive = true
                     }
-                    .onEnded { _ in
+                    .onEnded { value in
                         defer { reset() }
                         if isSliding {
                             onSlide(.ended)
+                            positions.append(
+                                CGPoint(
+                                    x: value.translation.width,
+                                    y: value.translation.height
+                                )
+                            )
+                            let classification = KeyGestureRecognizer.classify(
+                                positions: positions.elements,
+                                aspectRatio: aspectRatio
+                            )
+                            if classification.isReturn {
+                                onGestureRecognized(classification)
+                            }
                         } else {
                             onSlide(.tap)
                         }
@@ -91,6 +117,7 @@ struct SlideGestureHandler: ViewModifier {
     }
 
     private func reset() {
+        positions.removeAll()
         dragStarted = false
         isSliding = false
         lastTranslationX = 0

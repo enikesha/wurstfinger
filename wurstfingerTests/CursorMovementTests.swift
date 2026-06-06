@@ -74,4 +74,32 @@ struct CursorMovementPipelineTests {
         vm.handleSlide(deleteKey, phase: .ended)
         #expect(target.events.contains(.deleteBackward))
     }
+
+    @Test func deleteReturnSwipeLeftRemovesWholeCurrentWord() {
+        let (vm, target) = makeViewModel(languageId: "de_DE")
+        target.documentContextBeforeInput = "hello"
+
+        vm.handleGesture(.swipeLeft, keyId: UtilitySlot.delete, isReturn: true)
+
+        #expect(target.documentContextBeforeInput == "")
+        #expect(target.events.filter { $0 == .deleteBackward }.count == 5)
+    }
+
+    @Test func deleteLeftReturnDoesNotDeleteForwardOnReturnLeg() {
+        let (vm, target) = makeViewModel(languageId: "de_DE")
+        target.documentContextBeforeInput = "hello"
+        target.documentContextAfterInput = "after"
+        guard let deleteKey = vm.activeModeFromDefinition?.key(for: UtilitySlot.delete) else {
+            Issue.record("Delete key not found in definition")
+            return
+        }
+
+        vm.handleSlide(deleteKey, phase: .began)
+        let step = KeyboardConstants.SpaceGestures.dragStep
+        vm.handleSlide(deleteKey, phase: .changed(deltaX: -step * 3))
+        vm.handleSlide(deleteKey, phase: .changed(deltaX: step * 3))
+        vm.handleSlide(deleteKey, phase: .ended)
+
+        #expect(!target.events.contains(.adjustCursor(1)))
+    }
 }

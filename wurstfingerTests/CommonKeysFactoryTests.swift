@@ -35,6 +35,12 @@ struct CommonKeysTests {
         #expect(delete.swipeMode == .twoWayHorizontal)
     }
 
+    @Test func deleteKeyReturnSwipeLeftDeletesWordBackward() {
+        let delete = CommonKeys.delete
+        #expect(delete.bindings[.swipeLeft]?.action == .deleteBackward)
+        #expect(delete.bindings[.swipeLeft]?.returnAction == .deleteWordBackward)
+    }
+
     @Test func spacebarHasMoveCursorSlide() {
         let space = CommonKeys.spacebar
         #expect(space.slideType == .moveCursor)

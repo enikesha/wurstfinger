@@ -132,7 +132,9 @@ final class KeyboardViewModel: ObservableObject {
     var isSpaceDragging = false
     var spaceDragResidual: CGFloat = 0
     var isDeleteDragging = false
-    var deleteDragResidual: CGFloat = 0
+    var deleteDragTranslationX: CGFloat = 0
+    var deleteBackwardStepsDispatched = 0
+    var deleteForwardStepsDispatched = 0
     private var userDefaultsObserver: NSObjectProtocol?
     private var settingsCancellables = Set<AnyCancellable>()
 

@@ -617,6 +617,7 @@ struct AutoCapitalizationMiddlewareTests {
         #expect(AutoCapitalizationMiddleware.affectsCapitalization(.space))
         #expect(AutoCapitalizationMiddleware.affectsCapitalization(.newline))
         #expect(AutoCapitalizationMiddleware.affectsCapitalization(.deleteBackward))
+        #expect(AutoCapitalizationMiddleware.affectsCapitalization(.deleteWordBackward))
         #expect(AutoCapitalizationMiddleware.affectsCapitalization(.paste))
         #expect(!AutoCapitalizationMiddleware.affectsCapitalization(.moveCursor(offset: 1)))
         #expect(!AutoCapitalizationMiddleware.affectsCapitalization(.switchMode("main")))
@@ -641,6 +642,40 @@ struct AutoCapitalizationMiddlewareTests {
         pipe.process(PipelineFixtures.context(action: .commitText("x")))
 
         #expect(evaluationOrder == ["downstream", "evaluate"])
+    }
+}
+
+// MARK: - AdvancedTextMiddleware
+
+struct AdvancedTextMiddlewareTests {
+    private func pipeline(target: MockTextInputTarget) -> ActionPipeline {
+        let middleware = AdvancedTextMiddleware(
+            target: { target },
+            locale: { Locale(identifier: "en_US") }
+        )
+        return ActionPipeline(middlewares: [middleware])
+    }
+
+    @Test func deleteWordBackwardDeletesCurrentWord() {
+        let target = MockTextInputTarget()
+        target.documentContextBeforeInput = "hello"
+
+        pipeline(target: target).process(PipelineFixtures.context(action: .deleteWordBackward))
+
+        #expect(target.events == Array(repeating: .deleteBackward, count: 5))
+    }
+
+    @Test func deleteWordBackwardIncludesTrailingWhitespace() {
+        let target = MockTextInputTarget()
+        target.documentContextBeforeInput = "hello world  "
+
+        pipeline(target: target).process(PipelineFixtures.context(action: .deleteWordBackward))
+
+        #expect(target.events == Array(repeating: .deleteBackward, count: 7))
+    }
+
+    @Test func previousWordDeleteCountHandlesPunctuationRun() {
+        #expect(AdvancedTextMiddleware.previousWordDeleteCount(in: "hello?!") == 2)
     }
 }
 

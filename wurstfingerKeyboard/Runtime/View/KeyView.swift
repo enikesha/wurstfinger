@@ -63,7 +63,11 @@ struct KeyView: View {
             base.modifier(SlideGestureHandler(
                 slideType: key.slideType,
                 onSlide: { phase in onSlide?(key, phase) },
+                onGestureRecognized: { classification in
+                    onGesture(key, classification.gesture, classification.isReturn)
+                },
                 onTouchDown: { onTouchDown?() },
+                aspectRatio: keyAspectRatio,
                 isActive: $isActive
             ))
         } else {

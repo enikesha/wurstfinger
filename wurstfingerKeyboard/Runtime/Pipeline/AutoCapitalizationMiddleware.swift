@@ -40,7 +40,7 @@ struct AutoCapitalizationMiddleware: ActionMiddleware {
     /// without constructing a middleware instance.
     static func affectsCapitalization(_ action: KeyAction) -> Bool {
         switch action {
-        case .commitText, .space, .newline, .deleteBackward, .deleteForward,
+        case .commitText, .space, .newline, .deleteBackward, .deleteWordBackward, .deleteForward,
              .compose, .cycleAccents, .paste, .cut:
             true
         case .moveCursor, .switchMode, .capitalizeWord, .advanceToNextInputMode,

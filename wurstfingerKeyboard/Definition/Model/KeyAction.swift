@@ -37,6 +37,9 @@ enum KeyAction: Codable, Equatable {
     /// Delete backward
     case deleteBackward
 
+    /// Delete previous word
+    case deleteWordBackward
+
     /// Delete forward
     case deleteForward
 
