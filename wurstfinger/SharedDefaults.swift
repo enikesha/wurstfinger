@@ -11,7 +11,7 @@ import Foundation
 /// between the main app and keyboard extension
 enum SharedDefaults {
     /// The app group identifier shared between the main app and keyboard extension
-    static let suiteName = "group.de.akator.wurstfinger.shared"
+    static let suiteName = "group.en.mgl.wurstfinger.shared"
 
     /// The shared UserDefaults instance
     /// Falls back to standard UserDefaults if app group is not available (should never happen in production)

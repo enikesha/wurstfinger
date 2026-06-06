@@ -20,6 +20,8 @@ struct KeyView: View {
     let onGesture: (KeyConfig, GestureType, Bool) -> Void
     var onTouchDown: (() -> Void)?
     var onSlide: ((KeyConfig, SlidePhase) -> Void)?
+    var languageLabel: String = ""
+    var showsLanguageLabel: Bool = false
     var spanRatio: CGFloat = 1.0
 
     @State private var isActive = false
@@ -32,19 +34,6 @@ struct KeyView: View {
 
     @AppStorage(SettingsKey.keyAspectRatio.rawValue, store: SharedDefaults.store)
     private var keyAspectRatio: Double = DeviceLayoutUtils.defaultKeyAspectRatio
-
-    @AppStorage(SettingsKey.selectedLanguageId.rawValue, store: SharedDefaults.store)
-    private var selectedLanguageId: String = "en_US"
-
-    private var languageLabel: String {
-        let locale = Locale(identifier: selectedLanguageId)
-        return locale.language.languageCode?.identifier.uppercased() ?? ""
-    }
-
-    private var hasMultipleLanguages: Bool {
-        let ids = SharedDefaults.store.stringArray(forKey: SettingsKey.enabledLanguageIds.rawValue)
-        return (ids?.count ?? 0) > 1
-    }
 
     /// Maps emoji labels to SF Symbol names for utility keys.
     private static let sfSymbolMap: [String: String] = [
@@ -265,7 +254,7 @@ struct KeyView: View {
                 if let binding = key.bindings[gesture],
                    let alignment = Self.hintAlignments[gesture] {
                     if binding.action == .switchToNextLanguage {
-                        if hasMultipleLanguages {
+                        if showsLanguageLabel {
                             Text(languageLabel)
                                 .font(.system(size: scaledHintFontSize * 0.75, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Color.primary.opacity(0.5))

@@ -467,7 +467,7 @@ struct MultiLanguageSettingsTests {
         #expect(settings.enabledLanguageIds.contains("en_US"))
     }
 
-    @Test("Enabled list persistence round-trips through JSON")
+    @Test("Enabled list persistence round-trips through UserDefaults string array")
     func enabledListPersistence() {
         let (defaults, suite) = createTestDefaults()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -646,18 +646,48 @@ struct PinnedLanguageTests {
         LanguageSettings.saveEnabledLanguageIds(["en_US", "ru_RU"], to: defaults)
         defaults.set("ru_RU", forKey: SettingsKey.pinnedLanguageId.rawValue)
 
-        let viewModel = KeyboardViewModel(userDefaults: defaults, shouldPersistSettings: false)
-        let target = MockTextTarget()
-        viewModel.bindTextInputTarget(target)
-        viewModel.bindViewControllerActions(advanceToNextInputMode: {}, dismissKeyboard: {})
+        let viewModel = KeyboardViewModel(userDefaults: defaults)
+        let startupId = viewModel.loadStartupDefinition()
 
-        let startupId = LanguageSettings(userDefaults: defaults).startupLanguageId
-        viewModel.loadDefinition(for: startupId)
-
+        #expect(startupId == "ru_RU")
+        #expect(defaults.string(forKey: SettingsKey.selectedLanguageId.rawValue) == "ru_RU")
         #expect(
-            viewModel.pipelineLocale?.identifier == "ru_RU",
+            viewModel.currentDefinition?.id == "ru_RU",
             "ViewModel should boot with pinned language ru_RU, not selected en_US"
         )
+    }
+
+    @Test("KeyboardViewModel reload normalizes stale enabled languages")
+    func viewModelReloadNormalizesEnabledLanguages() {
+        let (defaults, suite) = createTestDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("en_US", forKey: SettingsKey.selectedLanguageId.rawValue)
+        LanguageSettings.saveEnabledLanguageIds(["en_US", "ru_RU"], to: defaults)
+        let viewModel = KeyboardViewModel(userDefaults: defaults, shouldPersistSettings: false)
+        #expect(viewModel.enabledLanguageIds == ["en_US", "ru_RU"])
+
+        defaults.set("de_DE", forKey: SettingsKey.selectedLanguageId.rawValue)
+        LanguageSettings.saveEnabledLanguageIds(["zz_ZZ"], to: defaults)
+        viewModel.reloadSettings()
+
+        #expect(viewModel.enabledLanguageIds == ["de_DE"])
+    }
+
+    @Test("KeyboardViewModel language cycling does not persist when disabled")
+    func viewModelSwitchDoesNotPersistWhenDisabled() {
+        let (defaults, suite) = createTestDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("en_US", forKey: SettingsKey.selectedLanguageId.rawValue)
+        LanguageSettings.saveEnabledLanguageIds(["en_US", "ru_RU"], to: defaults)
+        let viewModel = KeyboardViewModel(userDefaults: defaults, shouldPersistSettings: false)
+        viewModel.loadDefinition(for: "en_US")
+
+        viewModel.switchToNextLanguage()
+
+        #expect(viewModel.currentDefinition?.id == "ru_RU")
+        #expect(defaults.string(forKey: SettingsKey.selectedLanguageId.rawValue) == "en_US")
     }
 }
 

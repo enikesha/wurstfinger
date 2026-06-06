@@ -20,9 +20,7 @@ final class KeyboardViewController: UIInputViewController {
     /// since the LanguageSettings singleton may hold a stale value from its init.
     override var primaryLanguage: String? {
         get {
-            let languageId = SharedDefaults.store.string(forKey: SettingsKey.selectedLanguageId.rawValue)
-            let config = languageId.flatMap { LanguageConfig.language(withId: $0) } ?? .english
-            return config.locale.identifier
+            LanguageSettings(userDefaults: SharedDefaults.store).selectedLanguage.locale.identifier
         }
         set {
             super.primaryLanguage = newValue
@@ -44,11 +42,8 @@ final class KeyboardViewController: UIInputViewController {
             dismissKeyboard: { [weak self] in self?.dismissKeyboard() }
         )
 
-        // Load the keyboard definition for the selected language
-        let languageId = SharedDefaults.store.string(
-            forKey: SettingsKey.selectedLanguageId.rawValue
-        ) ?? LanguageSettings.detectSystemLanguage()
-        viewModel.loadDefinition(for: languageId)
+        // Load the startup language, honoring an optional pinned default.
+        viewModel.loadStartupDefinition()
 
         // Configure hosting synchronously so the SwiftUI view exists
         // before viewWillAppear sets the height constraint. Deferring via
@@ -64,11 +59,9 @@ final class KeyboardViewController: UIInputViewController {
         SharedDefaults.store.set(hasFullAccess, forKey: SettingsKey.keyboardFullAccess.rawValue)
         // Reload settings every time keyboard appears
         viewModel.reloadSettings()
-        // Reload definition if language changed while keyboard was backgrounded
-        let languageId = SharedDefaults.store.string(
-            forKey: SettingsKey.selectedLanguageId.rawValue
-        ) ?? LanguageSettings.detectSystemLanguage()
-        viewModel.loadDefinition(for: languageId)
+        // Reload definition if language changed while keyboard was backgrounded,
+        // honoring an optional pinned default each time the keyboard opens.
+        viewModel.loadStartupDefinition()
         updateKeyboardHeight()
     }
 
