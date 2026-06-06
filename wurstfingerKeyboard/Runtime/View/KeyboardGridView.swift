@@ -20,6 +20,8 @@ import SwiftUI
 struct KeyboardGridView: View {
     let arrangement: GridArrangement
     let keys: [String: KeyConfig]
+    var languageLabel: String = ""
+    var showsLanguageLabel: Bool = false
     let onGesture: (KeyConfig, GestureType, Bool) -> Void
     var onTouchDown: (() -> Void)?
     var onSlide: ((KeyConfig, SlidePhase) -> Void)?
@@ -55,6 +57,8 @@ struct KeyboardGridView: View {
                 onGesture: onGesture,
                 onTouchDown: onTouchDown,
                 onSlide: onSlide,
+                languageLabel: languageLabel,
+                showsLanguageLabel: showsLanguageLabel,
                 spanRatio: CGFloat(placement.widthMultiplier) / CGFloat(placement.heightMultiplier)
             )
             .gridCellColumns(placement.widthMultiplier)

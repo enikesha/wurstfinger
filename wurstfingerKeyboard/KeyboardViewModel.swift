@@ -80,7 +80,7 @@ final class KeyboardViewModel: ObservableObject {
     var onDismissKeyboard: (() -> Void)?
     /// Locale used by the pipeline (set from the keyboard definition).
     var pipelineLocale: Locale?
-    private var enabledLanguageIds: [String] = []
+    @Published private(set) var enabledLanguageIds: [String] = []
 
     // MARK: - Settings (delegated to extracted classes)
 
@@ -150,8 +150,8 @@ final class KeyboardViewModel: ObservableObject {
         layoutSettings = LayoutSettings(defaults: defaults, shouldPersist: shouldPersistSettings)
         hapticManager = HapticFeedbackManager(settings: hapticSettings)
 
-        enabledLanguageIds = LanguageSettings.loadEnabledLanguageIds(from: defaults)
-            ?? [SharedDefaults.store.string(forKey: SettingsKey.selectedLanguageId.rawValue) ?? "en_US"]
+        let languageSettings = LanguageSettings(userDefaults: defaults)
+        enabledLanguageIds = languageSettings.enabledLanguageIds
 
         // Forward settings changes to trigger objectWillChange on this ViewModel
         hapticSettings.objectWillChange
@@ -230,20 +230,36 @@ final class KeyboardViewModel: ObservableObject {
         hapticSettings.reload()
         layoutSettings.reload()
 
-        enabledLanguageIds = LanguageSettings.loadEnabledLanguageIds(from: sharedDefaults)
-            ?? enabledLanguageIds
+        let languageSettings = LanguageSettings(userDefaults: sharedDefaults)
+        enabledLanguageIds = languageSettings.enabledLanguageIds
+    }
+
+    @discardableResult
+    func loadStartupDefinition() -> String {
+        let languageSettings = LanguageSettings(userDefaults: sharedDefaults)
+        enabledLanguageIds = languageSettings.enabledLanguageIds
+        let startupLanguageId = languageSettings.startupLanguageId
+        if shouldPersistSettings {
+            sharedDefaults.set(startupLanguageId, forKey: SettingsKey.selectedLanguageId.rawValue)
+        }
+        loadDefinition(for: startupLanguageId)
+        return startupLanguageId
     }
 
     func switchToNextLanguage() {
+        let languageSettings = LanguageSettings(userDefaults: sharedDefaults)
+        enabledLanguageIds = languageSettings.enabledLanguageIds
         guard enabledLanguageIds.count > 1 else { return }
 
-        let currentId = sharedDefaults.string(forKey: SettingsKey.selectedLanguageId.rawValue)
-            ?? currentDefinition?.id
-            ?? "en_US"
-        let nextId = LanguageSettings(userDefaults: sharedDefaults).nextLanguageId(after: currentId)
+        let currentId = currentDefinition?.id
+            ?? sharedDefaults.string(forKey: SettingsKey.selectedLanguageId.rawValue)
+            ?? languageSettings.selectedLanguageId
+        let nextId = languageSettings.nextLanguageId(after: currentId)
 
         if nextId != currentId {
-            sharedDefaults.set(nextId, forKey: SettingsKey.selectedLanguageId.rawValue)
+            if shouldPersistSettings {
+                sharedDefaults.set(nextId, forKey: SettingsKey.selectedLanguageId.rawValue)
+            }
             loadDefinition(for: nextId)
         }
     }
@@ -253,8 +269,13 @@ final class KeyboardViewModel: ObservableObject {
     }
 
     var currentLanguageLabel: String {
-        let lang = pipelineLocale?.language.languageCode?.identifier ?? ""
-        return lang.uppercased()
+        if let currentDefinition {
+            return LanguageSettings.languageLabel(for: currentDefinition.id)
+        }
+        if let pipelineLocale {
+            return LanguageSettings.languageLabel(for: pipelineLocale)
+        }
+        return ""
     }
 
     // MARK: - Haptic Feedback (delegated to HapticFeedbackManager)

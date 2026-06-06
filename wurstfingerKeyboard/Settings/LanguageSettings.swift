@@ -11,7 +11,7 @@ import Foundation
 /// Manages keyboard language settings shared between host app and keyboard extension.
 /// Supports multiple enabled languages with in-keyboard cycling.
 class LanguageSettings: ObservableObject {
-    static let shared = LanguageSettings()
+    static let shared = LanguageSettings(userDefaults: SharedDefaults.store)
 
     @Published var selectedLanguageId: String {
         didSet {
@@ -40,9 +40,12 @@ class LanguageSettings: ObservableObject {
     private let languageKey = SettingsKey.selectedLanguageId.rawValue
     private let enabledKey = SettingsKey.enabledLanguageIds.rawValue
 
-    init(userDefaults: UserDefaults? = nil) {
-        let defaults = userDefaults ?? SharedDefaults.store
-        self.userDefaults = defaults
+    private convenience init() {
+        self.init(userDefaults: SharedDefaults.store)
+    }
+
+    init(userDefaults defaults: UserDefaults) {
+        userDefaults = defaults
 
         // Load saved language or detect from system, then normalize
         let storedLanguageId = defaults.string(forKey: SettingsKey.selectedLanguageId.rawValue)
@@ -62,30 +65,38 @@ class LanguageSettings: ObservableObject {
             resolvedEnabled = [resolvedLanguageId]
         }
 
-        // Load pinned language (before enabledLanguageIds didSet can fire)
+        // Load pinned language after resolving enabled IDs so stale pins can be
+        // cleared without firing property observers during initialization.
         let storedPinned = defaults.string(forKey: SettingsKey.pinnedLanguageId.rawValue)
+        var normalizedEnabled = resolvedEnabled
 
-        selectedLanguageId = resolvedLanguageId
-        enabledLanguageIds = resolvedEnabled
-        pinnedLanguageId = storedPinned
-
-        // Ensure selected language is in the enabled list
-        if !resolvedEnabled.contains(resolvedLanguageId) {
-            enabledLanguageIds.insert(resolvedLanguageId, at: 0)
+        if !normalizedEnabled.contains(resolvedLanguageId) {
+            normalizedEnabled.insert(resolvedLanguageId, at: 0)
         }
 
-        // Clear stale pinned ID
-        if let pinned = pinnedLanguageId {
-            if !enabledLanguageIds.contains(pinned) || LanguageConfig.language(withId: pinned) == nil {
-                pinnedLanguageId = nil
-            }
+        let normalizedPinned: String?
+        if let pinned = storedPinned,
+           normalizedEnabled.contains(pinned),
+           LanguageConfig.language(withId: pinned) != nil {
+            normalizedPinned = pinned
+        } else {
+            normalizedPinned = nil
         }
+
+        _selectedLanguageId = Published(initialValue: resolvedLanguageId)
+        _enabledLanguageIds = Published(initialValue: normalizedEnabled)
+        _pinnedLanguageId = Published(initialValue: normalizedPinned)
 
         // Persist normalized values
         if resolvedLanguageId != storedLanguageId {
             defaults.set(resolvedLanguageId, forKey: SettingsKey.selectedLanguageId.rawValue)
         }
-        Self.saveEnabledLanguageIds(enabledLanguageIds, to: defaults)
+        if storedPinned != nil, normalizedPinned == nil {
+            defaults.removeObject(forKey: SettingsKey.pinnedLanguageId.rawValue)
+        }
+        if storedEnabled != normalizedEnabled {
+            Self.saveEnabledLanguageIds(enabledLanguageIds, to: defaults)
+        }
     }
 
     // MARK: - Public API
@@ -129,8 +140,7 @@ class LanguageSettings: ObservableObject {
 
     /// Short uppercase label for the current language, e.g. "EN", "RU", "DE"
     var currentLanguageLabel: String {
-        let lang = selectedLanguage.locale.language.languageCode?.identifier ?? selectedLanguageId
-        return lang.uppercased(with: selectedLanguage.locale)
+        Self.languageLabel(for: selectedLanguage)
     }
 
     var pinnedLanguage: LanguageConfig? {
@@ -202,6 +212,22 @@ class LanguageSettings: ObservableObject {
         }
         let nextIndex = (currentIndex + 1) % enabledIds.count
         return enabledIds[nextIndex]
+    }
+
+    static func languageLabel(for language: LanguageConfig) -> String {
+        languageLabel(for: language.locale, fallback: language.id)
+    }
+
+    static func languageLabel(for languageId: String) -> String {
+        if let language = LanguageConfig.language(withId: languageId) {
+            return languageLabel(for: language)
+        }
+        return languageLabel(for: Locale(identifier: languageId), fallback: languageId)
+    }
+
+    static func languageLabel(for locale: Locale, fallback: String = "") -> String {
+        let lang = locale.language.languageCode?.identifier ?? fallback
+        return lang.uppercased(with: locale)
     }
 
     // MARK: - Persistence
